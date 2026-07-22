@@ -17,10 +17,37 @@ import json as js
 
 
 def find_path():
+    """
+    Locate the cookstock repo root (the folder containing 'src/').
+
+    1) On GitHub Actions, GITHUB_WORKSPACE always points at the correct
+       checkout root. We prefer this because actions/checkout clones the
+       repo into .../work/<repo>/<repo>/, i.e. TWO nested folders both
+       named 'cookstock' - a naive os.walk() search finds the OUTER one
+       first (which has no 'src/' inside) and returns the wrong path.
+    2) Otherwise, derive the repo root from this script's own location
+       (this script lives in <repo>/batch/), which is robust regardless
+       of what the surrounding folders are named.
+    3) Last resort: walk the home directory, but verify 'src/' actually
+       exists before accepting a candidate.
+    """
+    ws = os.environ.get('GITHUB_WORKSPACE')
+    if ws and os.path.isdir(os.path.join(ws, 'src')):
+        return ws
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidate = script_dir
+    for _ in range(4):
+        if os.path.basename(candidate) == 'cookstock' and os.path.isdir(os.path.join(candidate, 'src')):
+            return candidate
+        candidate = os.path.dirname(candidate)
+
     home_dir = os.path.expanduser("~")
     for root, dirs, files in os.walk(home_dir):
         if 'cookstock' in dirs:
-            return os.path.join(root, 'cookstock')
+            cand = os.path.join(root, 'cookstock')
+            if os.path.isdir(os.path.join(cand, 'src')):
+                return cand
     return None
 
 
