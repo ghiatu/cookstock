@@ -45,7 +45,7 @@ def find_path():
 # long-listed SET blue chips. For a real "scan all SET stocks" run, build
 # data/thai_tickers.csv as described in README_THAI.md.
 _FALLBACK_TICKERS = [
-    'PTT', 'AOT', 'CPALL', 'ADVANC', 'SCB', 'KBANK', 'BBL', 'CPN', 'DELTA', 'GULF'
+    'ASEFA', 'BIZ', 'KKP', 'PROSPECT', 'BLA', 'AOT'
 ]
 
 
