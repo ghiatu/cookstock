@@ -8,3 +8,4 @@ peewee>=3.16.2
 pytz
 appdirs
 frozendict
+yahoofinancials
