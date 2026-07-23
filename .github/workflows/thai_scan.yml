@@ -8,6 +8,11 @@ on:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    # Scanning the full SET + mai market (~850 tickers) with polite pacing
+    # takes far longer than the old 10-ticker test run - give it plenty of
+    # room. Tune CHUNK_SIZE / pause / delay below if you need it faster,
+    # but going too aggressive risks Yahoo Finance rate-limiting the run.
+    timeout-minutes: 240
     steps:
       - name: Checkout cookstock (with yahoofinancials submodule)
         uses: actions/checkout@v4
@@ -26,6 +31,15 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # --- Yahoo Finance request pacing (per HTTP request) ---
+          YF_MIN_DELAY_SEC: '1.0'
+          YF_MAX_DELAY_SEC: '2.2'
+          YF_MAX_RETRIES: '5'
+          YF_BACKOFF_BASE: '8'
+          # --- chunking (extra pause every N tickers, on top of the above) ---
+          THAI_SCAN_CHUNK_SIZE: '40'
+          THAI_SCAN_CHUNK_PAUSE_MIN_SEC: '20'
+          THAI_SCAN_CHUNK_PAUSE_MAX_SEC: '45'
         run: python batch/cookStockPipeline_thai.py
 
       - name: Upload results as workflow artifact
@@ -34,3 +48,4 @@ jobs:
         with:
           name: scan-results-${{ github.run_id }}
           path: results/
+
