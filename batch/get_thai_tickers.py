@@ -45,7 +45,7 @@ def find_path():
 # long-listed SET blue chips. For a real "scan all SET stocks" run, build
 # data/thai_tickers.csv as described in README_THAI.md.
 _FALLBACK_TICKERS = [
-    'ASEFA', 'BIZ', 'KKP', 'PROSPECT', 'BLA', 'AOT'
+    'PTT', 'AOT', 'CPALL', 'ADVANC', 'SCB', 'KBANK', 'BBL', 'CPN', 'DELTA', 'GULF'
 ]
 
 
@@ -55,15 +55,24 @@ def get_thai_tickers(csv_filename='data/thai_tickers.csv'):
     tickers = []
 
     if os.path.exists(csv_path):
+        seen = set()
         with open(csv_path, newline='', encoding='utf-8-sig') as f:
             reader = csv.reader(f)
             for row in reader:
                 if not row:
                     continue
                 symbol = row[0].strip().upper()
-                if not symbol or symbol == 'SYMBOL':
+                if not symbol or symbol == 'SYMBOL' or symbol.startswith('#'):
                     continue
+                if symbol in seen:
+                    continue
+                seen.add(symbol)
                 tickers.append(symbol)
+
+        if len(tickers) < 100:
+            print(f"WARNING: only {len(tickers)} tickers loaded from {csv_path} - "
+                  f"that's far short of the ~850 SET+mai listed companies. "
+                  f"Did you mean to run tools/build_thai_tickers.py to refresh the full list?")
     else:
         print(f"WARNING: {csv_path} not found, using small fallback ticker list.")
         tickers = _FALLBACK_TICKERS
@@ -77,3 +86,4 @@ if __name__ == '__main__':
     tks = get_thai_tickers()
     print(f"Loaded {len(tks)} Thai tickers")
     print(tks[:10])
+
