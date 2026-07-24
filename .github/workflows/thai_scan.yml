@@ -3,16 +3,24 @@ name: Thai Stock Scan (cookstock)
 on:
   workflow_dispatch: {}          # allows manual "Run workflow" button
   schedule:
-    - cron: '0 10 * * 1-5'       # 17:00 Bangkok time (UTC+7), Mon-Fri, after SET closes
+    # Multiple passes after SET closes (16:30 Bangkok). Each run only
+    # scans tickers not already checkpointed as done today, so re-running
+    # is cheap and just fills in whatever an earlier blocked/interrupted
+    # run missed - each run also gets a fresh GitHub-hosted runner, which
+    # may have a different (unblocked) IP than the previous one.
+    - cron: '30 9 * * 1-5'    # 16:30 Bangkok - right after close
+    - cron: '30 10 * * 1-5'   # 17:30 Bangkok - retry pass 1
+    - cron: '30 11 * * 1-5'   # 18:30 Bangkok - retry pass 2
 
 jobs:
   scan:
     runs-on: ubuntu-latest
-    # Scanning the full SET + mai market (~850 tickers) with polite pacing
-    # takes far longer than the old 10-ticker test run - give it plenty of
-    # room. Tune CHUNK_SIZE / pause / delay below if you need it faster,
-    # but going too aggressive risks Yahoo Finance rate-limiting the run.
-    timeout-minutes: 240
+    # Full SET+mai scan is chunked + checkpointed (resumable), so a single
+    # run doesn't need to finish the whole market - but give it a
+    # reasonable window regardless.
+    timeout-minutes: 120
+    permissions:
+      contents: write   # needed to commit the checkpoint/results back
     steps:
       - name: Checkout cookstock (with yahoofinancials submodule)
         uses: actions/checkout@v4
@@ -34,13 +42,35 @@ jobs:
           # --- Yahoo Finance request pacing (per HTTP request) ---
           YF_MIN_DELAY_SEC: '1.0'
           YF_MAX_DELAY_SEC: '2.2'
-          YF_MAX_RETRIES: '5'
-          YF_BACKOFF_BASE: '8'
+          YF_MAX_RETRIES: '3'
+          YF_BACKOFF_BASE: '5'
+          YF_CIRCUIT_THRESHOLD: '6'
+          # Optional: route requests through a proxy to work around Yahoo
+          # blocking GitHub-hosted runners' shared IP ranges. Only takes
+          # effect if you've added a YF_PROXY_URL repo secret.
+          YF_PROXY_URL: ${{ secrets.YF_PROXY_URL }}
           # --- chunking (extra pause every N tickers, on top of the above) ---
           THAI_SCAN_CHUNK_SIZE: '40'
           THAI_SCAN_CHUNK_PAUSE_MIN_SEC: '20'
           THAI_SCAN_CHUNK_PAUSE_MAX_SEC: '45'
         run: python batch/cookStockPipeline_thai.py
+        # Don't fail the whole job on a blocked-IP abort - we still want
+        # the commit-back step below to run and save progress. The
+        # Telegram message already flags the block clearly.
+        continue-on-error: true
+
+      - name: Commit checkpoint + results back to repo
+        # Runs even if the scan above was interrupted/blocked, so
+        # progress is never lost - this is what makes resuming possible,
+        # since each GitHub Actions run starts from a clean checkout.
+        if: always()
+        run: |
+          git config user.name "cookstock-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add results/
+          git diff --staged --quiet && echo "No changes to commit" || \
+            git commit -m "Thai scan checkpoint: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push || echo "Nothing to push"
 
       - name: Upload results as workflow artifact
         if: always()
@@ -48,4 +78,3 @@ jobs:
         with:
           name: scan-results-${{ github.run_id }}
           path: results/
-
