@@ -78,7 +78,7 @@ matplotlib.use('Agg')  # headless runner - no display available
 import cookStock  # noqa: E402
 from cookStock import *  # noqa: F401,F403,E402  (brings in batch_process, cookFinancials, etc.)
 
-from get_thai_tickers import get_thai_tickers  # noqa: E402
+from get_thai_tickers import get_thai_tickers, TickerListError  # noqa: E402
 import telegram_notify  # noqa: E402
 
 current_date = dt.date.today().strftime("%Y-%m-%d")
@@ -89,13 +89,40 @@ CHUNK_SIZE = int(os.environ.get('THAI_SCAN_CHUNK_SIZE', '40'))
 CHUNK_PAUSE_MIN = float(os.environ.get('THAI_SCAN_CHUNK_PAUSE_MIN_SEC', '20'))
 CHUNK_PAUSE_MAX = float(os.environ.get('THAI_SCAN_CHUNK_PAUSE_MAX_SEC', '45'))
 
-all_tickers = get_thai_tickers(repo_root=basePath)
+try:
+    all_tickers = get_thai_tickers(repo_root=basePath)
+except TickerListError as exc:
+    # Don't scan anything unrelated/unexpected - stop and say exactly why,
+    # loudly, in Telegram (not just a GitHub Actions log nobody checks).
+    telegram_notify.send_text(
+        f"<b>Cookstock (Thai) - {current_date}</b>\n"
+        f"🚫 Scan did not run: could not load the ticker list.\n"
+        f"{str(exc)}"
+    )
+    print(f"FATAL: {exc}")
+    sys.exit(1)
+
+all_tickers_set = set(all_tickers)
 
 # ---- resume from today's checkpoint, if any (results dir is fixed by
 #      cookStock regardless of chunk label, so we can compute it before
 #      the first batch_process instance exists) ----
 resultsRoot = os.path.join(basePath, 'results')
 done_tickers, all_passed = scan_checkpoint.load(resultsRoot)
+
+# Drop any checkpointed ticker that's no longer in today's universe - e.g.
+# the user edited data/thai_tickers.csv mid-day, or an earlier run (before
+# a bug fix) scanned a different/fallback list. Without this filter, stale
+# entries (like a leftover "PTT" result from before the list was pared
+# down to 7 tickers) keep reappearing in every summary even though PTT
+# isn't in the current ticker list at all.
+stale = done_tickers - all_tickers_set
+if stale:
+    print(f"[checkpoint] dropping {len(stale)} stale ticker(s) no longer in "
+          f"the current universe: {sorted(stale)}")
+    done_tickers &= all_tickers_set
+    all_passed = [item for item in all_passed
+                  if not (set(item.keys()) & stale)]
 
 selected = [t for t in all_tickers if t not in done_tickers]
 print(f"Total universe: {len(all_tickers)} tickers (SET + mai). "
@@ -158,8 +185,8 @@ fully_complete = (not blocked_abort) and (not failed_tickers) and (len(done_tick
 rl_stats = yahoo_rate_limiter.stats
 lines = [
     f"<b>Cookstock (Thai SET+mai) - {current_date}</b>",
-    f"Universe: {len(all_tickers)} tickers | Done today: {len(done_tickers)} | "
-    f"This run scanned: {len(selected)}",
+    f"Universe ({len(all_tickers)}): {', '.join(t.replace('.BK','') for t in all_tickers)}",
+    f"Done today: {len(done_tickers)} | This run scanned: {len(selected)}",
     f"Passed VCP screen (cumulative today): {len(passed)}",
 ]
 if blocked_abort:
