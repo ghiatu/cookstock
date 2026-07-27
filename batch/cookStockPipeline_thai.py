@@ -89,7 +89,7 @@ CHUNK_SIZE = int(os.environ.get('THAI_SCAN_CHUNK_SIZE', '40'))
 CHUNK_PAUSE_MIN = float(os.environ.get('THAI_SCAN_CHUNK_PAUSE_MIN_SEC', '20'))
 CHUNK_PAUSE_MAX = float(os.environ.get('THAI_SCAN_CHUNK_PAUSE_MAX_SEC', '45'))
 
-all_tickers = get_thai_tickers()
+all_tickers = get_thai_tickers(repo_root=basePath)
 
 # ---- resume from today's checkpoint, if any (results dir is fixed by
 #      cookStock regardless of chunk label, so we can compute it before
@@ -209,5 +209,4 @@ if failed_tickers:
 # while still having saved all progress via the checkpoint above.
 if blocked_abort:
     sys.exit(1)
-
 
