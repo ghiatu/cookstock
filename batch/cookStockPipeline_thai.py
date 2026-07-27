@@ -94,12 +94,26 @@ try:
 except TickerListError as exc:
     # Don't scan anything unrelated/unexpected - stop and say exactly why,
     # loudly, in Telegram (not just a GitHub Actions log nobody checks).
+    # Include full diagnostics so a path mismatch is diagnosable from the
+    # Telegram message alone instead of guessing across multiple rounds.
+    ws = os.environ.get('GITHUB_WORKSPACE', '(not set)')
+    try:
+        base_listing = ', '.join(sorted(os.listdir(basePath))) if basePath else '(basePath is None)'
+    except OSError as list_exc:
+        base_listing = f'(could not list: {list_exc})'
+    diag = (
+        f"basePath = {basePath}\n"
+        f"GITHUB_WORKSPACE = {ws}\n"
+        f"basePath contents = {base_listing}\n"
+        f"srcPath exists = {os.path.isdir(srcPath)}"
+    )
     telegram_notify.send_text(
         f"<b>Cookstock (Thai) - {current_date}</b>\n"
         f"🚫 Scan did not run: could not load the ticker list.\n"
-        f"{str(exc)}"
+        f"{str(exc)}\n\n"
+        f"<pre>{diag}</pre>"
     )
-    print(f"FATAL: {exc}")
+    print(f"FATAL: {exc}\n{diag}")
     sys.exit(1)
 
 all_tickers_set = set(all_tickers)
