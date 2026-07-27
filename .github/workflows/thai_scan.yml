@@ -42,9 +42,9 @@ jobs:
           # --- Yahoo Finance request pacing (per HTTP request) ---
           YF_MIN_DELAY_SEC: '1.0'
           YF_MAX_DELAY_SEC: '2.2'
-          YF_MAX_RETRIES: '3'
-          YF_BACKOFF_BASE: '5'
-          YF_CIRCUIT_THRESHOLD: '6'
+          YF_MAX_RETRIES: '2'
+          YF_BACKOFF_BASE: '4'
+          YF_CIRCUIT_THRESHOLD: '3'
           # Optional: route requests through a proxy to work around Yahoo
           # blocking GitHub-hosted runners' shared IP ranges. Only takes
           # effect if you've added a YF_PROXY_URL repo secret.
