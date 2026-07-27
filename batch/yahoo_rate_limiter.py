@@ -52,10 +52,10 @@ import requests
 
 MIN_DELAY = float(os.environ.get('YF_MIN_DELAY_SEC', '1.0'))
 MAX_DELAY = float(os.environ.get('YF_MAX_DELAY_SEC', '2.2'))
-MAX_RETRIES = int(os.environ.get('YF_MAX_RETRIES', '3'))
-BACKOFF_BASE = float(os.environ.get('YF_BACKOFF_BASE', '5'))
+MAX_RETRIES = int(os.environ.get('YF_MAX_RETRIES', '2'))
+BACKOFF_BASE = float(os.environ.get('YF_BACKOFF_BASE', '4'))
 PROXY_URL = os.environ.get('YF_PROXY_URL', '').strip()
-CIRCUIT_THRESHOLD = int(os.environ.get('YF_CIRCUIT_THRESHOLD', '6'))
+CIRCUIT_THRESHOLD = int(os.environ.get('YF_CIRCUIT_THRESHOLD', '3'))
 
 _BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -142,8 +142,16 @@ def _paced_request(self, method, url, *args, **kwargs):
             f"self-hosted runner with a dedicated IP."
         )
 
+    # IMPORTANT: don't hand back a 429/5xx response for the caller to
+    # silently parse as if it were real data - yahoofinancials doesn't
+    # check status codes, so it would happily try to parse an error page
+    # as JSON and cookStock.py would proceed on empty/garbage data,
+    # producing wrong-looking results instead of a clean failure. Raise
+    # instead, so the per-ticker/chunk try/except in the pipeline marks
+    # this ticker as failed (to retry next run) rather than corrupting
+    # the output.
     if resp is not None:
-        return resp  # let caller see the final (bad) response / raise_for_status
+        resp.raise_for_status()
     raise last_exc
 
 
@@ -154,4 +162,3 @@ if not _already_patched:
     print(f"[yahoo_rate_limiter] active: {MIN_DELAY:.1f}-{MAX_DELAY:.1f}s pacing, "
           f"{MAX_RETRIES} retries, backoff base {BACKOFF_BASE:.0f}s, "
           f"circuit breaker at {CIRCUIT_THRESHOLD} consecutive blocks{proxy_note}")
-
