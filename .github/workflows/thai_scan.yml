@@ -1,6 +1,6 @@
 name: Thai Stock Scan (cookstock)
 
-on:
+off:
   workflow_dispatch: {}          # allows manual "Run workflow" button
   schedule:
     # Multiple passes after SET closes (16:30 Bangkok). Each run only
