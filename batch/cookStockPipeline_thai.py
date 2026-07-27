@@ -209,4 +209,3 @@ if failed_tickers:
 # while still having saved all progress via the checkpoint above.
 if blocked_abort:
     sys.exit(1)
-
