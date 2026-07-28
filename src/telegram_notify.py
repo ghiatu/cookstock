@@ -55,11 +55,11 @@ def main():
                         passed.append((ticker, info))
 
     if not passed:
-        send_message(f"📊 CookStock scan {current_date}\nไม่มีหุ้นผ่านเกณฑ์ VCP วันนี้")
+        send_message(f"🇹🇭 CookStock SET scan {current_date}\nไม่มีหุ้นผ่านเกณฑ์ VCP วันนี้")
         return
 
     tickers_line = ", ".join(t for t, _ in passed)
-    send_message(f"📊 CookStock scan {current_date}\nพบหุ้นผ่านเกณฑ์ {len(passed)} ตัว: {tickers_line}")
+    send_message(f"🇹🇭 CookStock SET scan {current_date}\nพบหุ้นผ่านเกณฑ์ {len(passed)} ตัว: {tickers_line}")
 
     for ticker, info in passed:
         caption = (

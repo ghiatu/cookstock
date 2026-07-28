@@ -1,0 +1,5 @@
+Cookstock Thai Scanner
+@cookstock_thai_scanner_bot
+
+Telegram token : 8938268777:AAGHVHksWkbfRGl_4dVZd29j2KY6FGfcLYk
+TELEGRAM_CHAT_ID : 6560659347

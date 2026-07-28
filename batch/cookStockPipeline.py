@@ -45,11 +45,10 @@ current_date = dt.date.today().strftime("%m_%d_%Y")
 #set sector names to be run
 # sectorCollection = [SectorConstants.TECH, SectorConstants.HEALTH_CARE, SectorConstants.BASICS, SectorConstants.SERVICES, SectorConstants.FINANCE, SectorConstants.ENERGY, SectorConstants.NON_DURABLE_GOODS, SectorConstants.DURABLE_GOODS]
 
-from get_sp100 import get_sp100_tickers
+from get_set100 import get_set100_tickers
 
-# scan เฉพาะ S&P100 100 ตัวแรก (ปรับ limit=10 ตอนทดสอบให้รันเร็วขึ้น)
-selected = get_sp100_tickers(limit=100)
-sectorNameStr = "SP100"
+selected = get_set100_tickers(limit=100)
+sectorNameStr = "SET100"
 
 y = batch_process(selected, sectorNameStr)
 y.batch_pipeline_full()
